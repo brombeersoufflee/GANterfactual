@@ -1,0 +1,4 @@
+__pycache__/
+data/
+non_glaucoma_oct_data/
+.venv/

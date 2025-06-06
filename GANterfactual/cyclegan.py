@@ -24,34 +24,50 @@ class CycleGAN():
 
     def __init__(self):
         # Input shape
+        # images modified in preprocessor2.py to 512x512
         self.img_rows = 512
         self.img_cols = 512
+        # greyscale images
         self.channels = 1
+        #image shape defintion, for CNN
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
 
         # Calculate output shape of D (PatchGAN)
+        # TODO: what is PatchGAN?
+        # PatchGAN: uses patches, so the discriminator will classify each patch as real or fake
+        # Patch size is half of the image size, so 512/2^4 = 32 in this case
         patch = int(self.img_rows / 2 ** 4)
-        self.disc_patch = (patch, patch, 1)
+        self.disc_patch = (patch, patch, 1) # disc to be used on image in discriminator
 
         # Number of filters in the first layer of G and D
+        # the generator and discriminator are both CNNs, so they have filters
         self.gf = 32
         self.df = 64
 
         # Loss weights
-        self.lambda_cycle = 10.0  # Cycle-consistency loss
-        self.lambda_id = 0.1 * self.lambda_cycle  # Identity loss
+        self.lambda_cycle = 10.0  # Cycle-consistency loss lamda value (how much weight to give to the cycle-consistency loss)
+        # Cycle-consistency loss: ensures that the translation from one domain to another and back results in the original image
+        self.lambda_id = 0.1 * self.lambda_cycle  # Identity loss lambda value (how much weight to give to the identity loss)
+        # Identity loss: ensures that the generator does not change the image if it is already in the target domain
+        # TODO: Why  is the identityy value one thenth of the cycle-consistency loss?
 
-        self.d_N = None
-        self.d_P = None
-        self.g_NP = None
-        self.g_PN = None
-        self.combined = None
-        self.classifier = None
+        # Initialize the discriminators and generators
+        self.d_N = None # Discriminator for NEGATIVE domain --> CNN classifier
+        self.d_P = None # Discriminator for POSITIVE domain --> CNN classifier
+        self.g_NP = None # Generator to translate NEGATIVE to POSITIVE domain -> CNN U Net
+        # U-Net: a type of CNN that is used for image segmentation, but here used to translate images from one domain to another
+        self.g_PN = None # Generator to translate POSITIVE to NEGATIVE domain -> CNN U Net
+        self.combined = None # Combined model for training the generators -> GAN
+        self.classifier = None # Classifier to classify the images in the two domains
 
     def construct(self, classifier_path=None, classifier_weight=None):
         # Build the discriminators
+        # TODO: what is the difference between the two discriminators?
+        # IDEA: The difference is the input images, one is for the NEGATIVE domain and the other for the POSITIVE domain
+        # IDEA: There could be just one but the output is: Is this a real POSITIVE image or a fake POSITIVE image?
+        # IDEA: The other one is: Is this a real NEGATIVE image or a fake NEGATIVE image?
         self.d_N = build_discriminator(self.img_shape, self.df)
-        self.d_P = build_discriminator(self.img_shape, self.df)
+        self.d_P = build_discriminator(self.img_shape, self.df) 
 
         # Build the generators
         self.g_NP = build_generator(self.img_shape, self.gf, self.channels)
@@ -60,6 +76,8 @@ class CycleGAN():
         self.build_combined(classifier_path, classifier_weight)
 
     def load_existing(self, cyclegan_folder, classifier_path=None, classifier_weight=None):
+        # The discriminators and generators from disk
+        # the cycle itself is not loaded from disk, but built again
         custom_objects = {"InstanceNormalization": InstanceNormalization}
 
         # Load discriminators from disk
@@ -81,6 +99,7 @@ class CycleGAN():
         self.build_combined(classifier_path, classifier_weight)
 
     def save(self, cyclegan_folder):
+        # save the generators and discriminators to disk, the cycle gan itself is not saved but built again (see above)
         os.makedirs(cyclegan_folder, exist_ok=True)
 
         # Save discriminators to disk
@@ -92,15 +111,20 @@ class CycleGAN():
         self.g_PN.save(os.path.join(cyclegan_folder, 'generator_pn.h5'))
 
     def build_combined(self, classifier_path=None, classifier_weight=None):
+        # optimizer for both discriminators and generators, all use the same optimizer
         optimizer = Adam(0.0002, 0.5)
 
+        # discriminators d_N / D_P means the discriminator for the NEGATIVE / POSITIVE domain
+        # mean square error for the classifier, the classifier just returns one probability per image
+        # TODO: Is 0 real or is 1 real?
+        # TODO: assess accuracy because? why not balanced accuracy?
         self.d_N.compile(loss='mse',
                          optimizer=optimizer,
                          metrics=['accuracy'])
         self.d_P.compile(loss='mse',
                          optimizer=optimizer,
                          metrics=['accuracy'])
-
+        # -----------------------------------------------------------CONTINUE HERE------------------------------------------------------------
         # Input images from both domains
         img_N = Input(shape=self.img_shape)
         img_P = Input(shape=self.img_shape)
