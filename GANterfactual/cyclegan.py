@@ -66,6 +66,8 @@ class CycleGAN():
         # IDEA: The difference is the input images, one is for the NEGATIVE domain and the other for the POSITIVE domain
         # IDEA: There could be just one but the output is: Is this a real POSITIVE image or a fake POSITIVE image?
         # IDEA: The other one is: Is this a real NEGATIVE image or a fake NEGATIVE image?
+        # The reasoning is that the discriminator is trained to classify images as real or fake, so it needs to know which domain the image is from
+        # furthermore, both generators neeed their own adversaries, to make them better at generating images
         self.d_N = build_discriminator(self.img_shape, self.df)
         self.d_P = build_discriminator(self.img_shape, self.df) 
 
@@ -73,6 +75,8 @@ class CycleGAN():
         self.g_NP = build_generator(self.img_shape, self.gf, self.channels)
         self.g_PN = build_generator(self.img_shape, self.gf, self.channels)
 
+        # Combined model trains generators to fool discriminators
+        # contains the losses for the generators and discriminators
         self.build_combined(classifier_path, classifier_weight)
 
     def load_existing(self, cyclegan_folder, classifier_path=None, classifier_weight=None):
@@ -96,6 +100,7 @@ class CycleGAN():
                                             custom_objects=custom_objects)
         self.g_PN._name = "g_PN"
 
+        # builds combined model based on loaded discriminators and generators
         self.build_combined(classifier_path, classifier_weight)
 
     def save(self, cyclegan_folder):
@@ -124,8 +129,8 @@ class CycleGAN():
         self.d_P.compile(loss='mse',
                          optimizer=optimizer,
                          metrics=['accuracy'])
-        # -----------------------------------------------------------CONTINUE HERE------------------------------------------------------------
         # Input images from both domains
+        # the input images are separated in negative and positive images
         img_N = Input(shape=self.img_shape)
         img_P = Input(shape=self.img_shape)
 
@@ -140,6 +145,9 @@ class CycleGAN():
         img_P_id = self.g_NP(img_P)
 
         # For the combined model we will only train the generators
+        # TODO: Why is this done?
+        # GPT: The discriminators are already trained, so we only need to train the generators to fool the discriminators
+        # TODO: Why are the generators not set to non-trainable? (GPT suggestts to also set the generators to non-trainable)
         self.d_N.trainable = False
         self.d_P.trainable = False
 
