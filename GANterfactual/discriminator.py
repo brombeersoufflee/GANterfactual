@@ -3,7 +3,6 @@ from keras.layers import LeakyReLU
 from keras.layers import Conv2D
 from keras.layers import BatchNormalization
 from keras.models import Model
-# from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
 
 
 def build_discriminator(img_shape, df):
@@ -13,6 +12,8 @@ def build_discriminator(img_shape, df):
         d = LeakyReLU(alpha=0.2)(d)
         if normalization:
             # https://stackoverflow.com/questions/68088889/how-to-add-instancenormalization-on-tensorflow-keras
+            # TODO: dive into the math and make sure this is correct
+            # TODO: There are more BatchNormalizations in the code base so if u replace this one then replace all of them
             d = BatchNormalization(axis=[0,1])(d)
         return d
 

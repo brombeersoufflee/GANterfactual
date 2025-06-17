@@ -9,10 +9,10 @@ import numpy as np
 
 from skimage.transform import resize
 
-from keras.layers import Input, Dropout, Concatenate
+from keras.layers import Input, Dropout, Concatenate, BatchNormalization
 from keras.models import Model
 from keras.optimizers import Adam
-from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
+# from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
 
 
 from classifier import load_classifier
@@ -85,7 +85,7 @@ class CycleGAN():
         # custom objects for loading the models, InstanceNormalization is a custom layer used in the generators and discriminators
         # It is used to normalize the activations of the previous layer at each batch, which helps to stabilize the training
         # To achieve this we use the keras
-        custom_objects = {"InstanceNormalization": InstanceNormalization}
+        custom_objects = {"InstanceNormalization": BatchNormalization(axis=[0,1])}
 
         # Load discriminators from disk
         self.d_N = keras.models.load_model(os.path.join(cyclegan_folder, 'discriminator_n.h5'),

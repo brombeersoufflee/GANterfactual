@@ -1,10 +1,9 @@
 from __future__ import print_function, division
-from keras.layers import Input, Dense, Reshape, Flatten, Dropout, Concatenate
-from keras.layers import BatchNormalization, Activation, ZeroPadding2D, Lambda
+from keras.layers import Input, Dense, Flatten, Dropout
+from keras.layers import BatchNormalization, Activation
 from keras.layers import Dense, Activation, Dropout, Flatten, Conv2D, MaxPooling2D
-from keras.layers import UpSampling2D, Conv2D
-from keras.models import Sequential, Model
-import keras
+from keras.layers import Conv2D
+from keras.models import Model
 from keras.models import load_model
 
 # The trained classifier is loaded.

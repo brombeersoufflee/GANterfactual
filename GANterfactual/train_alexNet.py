@@ -5,7 +5,6 @@ from keras.layers import BatchNormalization
 import numpy as np
 from keras.regularizers import l2
 import os
-import tensorflow as tf
 tensorboard_callback = keras.callbacks.TensorBoard(log_dir="logs")
 np.random.seed(1000)
 dimension = 512
