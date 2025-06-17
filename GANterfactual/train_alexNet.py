@@ -1,12 +1,12 @@
 import keras
 from keras import Input, Model
-from keras.layers import Dense, Activation, Dropout, Flatten, Conv2D, MaxPooling2D
-from keras.preprocessing.image import ImageDataGenerator
-from keras.layers.normalization import BatchNormalization
+from keras.layers import Dense, Activation, Dropout, Flatten, Conv2D, MaxPooling2D, Rescaling
+from keras.layers import BatchNormalization
 import numpy as np
 from keras.regularizers import l2
 import os
-tensorboard_callback = keras.callbacks.TensorBoard(log_dir="log")
+import tensorflow as tf
+tensorboard_callback = keras.callbacks.TensorBoard(log_dir="logs")
 np.random.seed(1000)
 dimension = 512
 
@@ -111,43 +111,61 @@ def get_adapted_alexNet():
 
 
 def get_data():
+    # dimension = 512
     image_size = dimension
+    # set the batch size, aka how many images to process at once
     batch_size = 32
     # Load data for training
-    train_gen = ImageDataGenerator(preprocessing_function=(lambda x: x / 127.5 - 1.))
-
-    train_data = train_gen.flow_from_directory(
-        directory="../data/train",
-        target_size=(image_size, image_size),
+    # modifications: Use image_dataset_from_directory instead of deprecated ImageDataGenerator
+    train_data = keras.utils.image_dataset_from_directory(
+        "../data/train",
+        labels='inferred',
+        label_mode='categorical',  # one-hot encoded labels, class a is 0 and class b is 1, aligns with negative and positive in folder structure
+        color_mode='grayscale',
         batch_size=batch_size,
-        class_mode='categorical',
-        shuffle=True,
-        color_mode='grayscale')
+        image_size=(image_size, image_size),
+        shuffle=True
+    )
 
-    validation_data = train_gen.flow_from_directory(
-        directory="../data/validation",
-        target_size=(image_size, image_size),
+    validation_data = keras.utils.image_dataset_from_directory(
+        "../data/validation",
+        labels='inferred',
+        label_mode='categorical',
+        color_mode='grayscale',
         batch_size=batch_size,
-        class_mode='categorical',
-        shuffle=True,
-        color_mode='grayscale')
+        image_size=(image_size, image_size),
+        shuffle=True
+    )
+
+    # Normalize: (lambda x: x / 127.5 - 1) can be applied as part of a preprocessing layer
+    normalization_layer = Rescaling(1./127.5, offset=-1)
+
+    train_data = train_data.map(lambda x, y: (normalization_layer(x), y))
+    validation_data = validation_data.map(lambda x, y: (normalization_layer(x), y))
 
     return train_data, validation_data
 
-
+# Example model (assuming you have this function defined elsewhere)
 model = get_adapted_alexNet()
 model.summary()
 
-train, test = get_data()
-check_point = keras.callbacks.ModelCheckpoint("classifier.h5", save_best_only=True, monitor='val_accuracy', mode='max')
+# modifications: name data validation data instead of test (there is another test data folder)
+train, validation = get_data()
+
+# Callbacks
+# modifications: store model as .keras file
+check_point = keras.callbacks.ModelCheckpoint("classifier.keras", save_best_only=True, monitor='val_accuracy', mode='max')
 early_stopping = keras.callbacks.EarlyStopping(min_delta=0.001, patience=10, restore_best_weights=True)
 
 if __name__ == "__main__":
-    hist = model.fit_generator(train,
-                               epochs=1000,
-                               validation_data=test,
-                               callbacks=[check_point, early_stopping,tensorboard_callback],
-                               steps_per_epoch=len(train),
-                               validation_steps=len(test))
+    # modifications: use fit and store model as .keras file
+    #.fit_generator() function first accepts a batch of the dataset, then performs backpropagation on it, and then updates the weights in our model
+    # fit_generator was deprecated, it was replaced by fit, which can take a generator directly as an input
+    hist = model.fit(
+        train,
+        validation_data=validation,
+        epochs=1000,
+        callbacks=[check_point, early_stopping, tensorboard_callback],
+    )
 
-    model.save(os.path.join('..','models','classifier','model.h5'), include_optimizer=False)
+    model.save(os.path.join('..','models','classifier','model.keras'), include_optimizer=False)

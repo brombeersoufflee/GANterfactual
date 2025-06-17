@@ -62,14 +62,16 @@ def resize_im(in_path, out_path, images, dim):
         image_in_path = os.path.join(in_path, imagedcm)
         # print("Processing image: ", image_in_path)
         assert (os.path.isfile(image_in_path))
-        image_out_path = os.path.join(out_path, image)
-        
+        imagepng = image + '.png'
+        image_out_path = os.path.join(out_path, imagepng)
+
         with dcmread(image_in_path) as ds:
                 data = ds.pixel_array
                 # resized_img is np_array
                 resized_img = resize(data, (dim, dim), anti_aliasing=True)
                 resized_img = Image.fromarray(resized_img.astype(np.uint8))
-                resized_img.save(image_out_path, 'png', quality=100)
+                # TODO: images are all black, AAAAAHHH
+                resized_img.save(image_out_path, quality=100)
 
 cwd = os.getcwd()
 print(cwd)

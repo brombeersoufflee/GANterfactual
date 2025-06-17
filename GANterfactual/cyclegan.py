@@ -24,7 +24,7 @@ class CycleGAN():
 
     def __init__(self):
         # Input shape
-        # images modified in preprocessor2.py to 512x512
+        # images modified in preprocessor.py to 512x512
         self.img_rows = 512
         self.img_cols = 512
         # greyscale images
@@ -210,8 +210,8 @@ class CycleGAN():
         class_N = np.stack([np.ones(batch_size), np.zeros(batch_size)]).T
         class_P = np.stack([np.zeros(batch_size), np.ones(batch_size)]).T
 
-        for epoch in range(epochs):
-            for batch_i, (imgs_N, imgs_P) in enumerate(data_loader.load_batch(train_N, train_P, batch_size)):
+        for epoch in range(epochs): # epochs = 20
+            for batch_i, (imgs_N, imgs_P) in enumerate(data_loader.load_batch(train_N, train_P, batch_size)): #load_batch yields a batch amount of (normal, pneumo)
                 # ----------------------
                 #  Train Discriminators
                 # ----------------------

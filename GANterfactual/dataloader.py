@@ -11,12 +11,14 @@ class DataLoader():
         self.dataset_name = dataset_name
         self.img_res = img_res
 
+        # The preprocessing function normalizes the pixel values of the images to the range [-1, 1].
         self.image_gen_config = {
             "horizontal_flip": False,
             "preprocessing_function": (lambda x: x / 127.5 - 1.),
             "rescale": None,
         }
 
+    # needs to be modified to be "negative" and "positive" for the two classes, not capitalized
     def load_batch(self, train_N="NEGATIVE", train_P="POSITIVE", batch_size=16, is_testing=False):
         generator = keras.preprocessing.image.ImageDataGenerator(**self.image_gen_config)
 
