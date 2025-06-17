@@ -82,6 +82,9 @@ class CycleGAN():
     def load_existing(self, cyclegan_folder, classifier_path=None, classifier_weight=None):
         # The discriminators and generators from disk
         # the cycle itself is not loaded from disk, but built again
+        # custom objects for loading the models, InstanceNormalization is a custom layer used in the generators and discriminators
+        # It is used to normalize the activations of the previous layer at each batch, which helps to stabilize the training
+        # To achieve this we use the keras
         custom_objects = {"InstanceNormalization": InstanceNormalization}
 
         # Load discriminators from disk
@@ -156,7 +159,7 @@ class CycleGAN():
         valid_P = self.d_P(fake_P)
 
         if classifier_path is not None and os.path.isfile(classifier_path):
-            self.classifier = load_classifier(classifier_path, self.img_shape)
+            self.classifier = load_classifier(classifier_path)
             self.classifier._name = "classifier"
             self.classifier.trainable = False
 

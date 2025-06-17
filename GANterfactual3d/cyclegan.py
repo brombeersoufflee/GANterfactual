@@ -9,13 +9,14 @@ import numpy as np
 
 from skimage.transform import resize
 
+from keras.saving import load_model
 from keras.layers import Input, Dropout, Concatenate
 from keras.models import Model
 from keras.optimizers import Adam
 from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
 
 
-from classifier import load_classifier
+
 from dataloader import DataLoader
 from discriminator import build_discriminator
 from generator import build_generator
@@ -124,7 +125,7 @@ class CycleGAN():
         valid_P = self.d_P(fake_P)
 
         if classifier_path is not None and os.path.isfile(classifier_path):
-            self.classifier = load_classifier(classifier_path, self.img_shape)
+            self.classifier = load_model(classifier_path, compile=True)
             self.classifier._name = "classifier"
             self.classifier.trainable = False
 
@@ -312,7 +313,7 @@ class CycleGAN():
 
 if __name__ == '__main__':
     gan = CycleGAN()
-    gan.construct(classifier_path=os.path.join('..', 'models', 'classifier', 'model.h5'), classifier_weight=1)
+    gan.construct(classifier_path="CNN_model.keras", classifier_weight=1)
     gan.train(dataset_name=os.path.join("..","data"), epochs=20, batch_size=1, print_interval=10,
           sample_interval=100)
     gan.save(os.path.join('..', 'models', 'GANterfactual'))

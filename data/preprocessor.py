@@ -34,6 +34,8 @@ def preprocess(in_path, out_path, test_size, val_size, dim):
     print("Classes found: ", le.classes_)
     # df_img_lbl = df_img_lbl.set_index('patientId')
 
+    # the class encoding by label encoder is the wrong way around
+    # we fix this by assigning "positive" to the first class (ie. 0) and "negative" to the second class (ie. 1)
     for idx, label in enumerate(["positive", "negative"]):
         df_label = df_img_lbl[df_img_lbl["class"] == idx]
         print(f"Number of images in {label} dataset: ", df_label.shape[0])

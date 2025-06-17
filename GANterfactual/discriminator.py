@@ -1,8 +1,9 @@
 from keras.layers import Input
-from keras.layers.advanced_activations import LeakyReLU
-from keras.layers.convolutional import Conv2D
+from keras.layers import LeakyReLU
+from keras.layers import Conv2D
+from keras.layers import BatchNormalization
 from keras.models import Model
-from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
+# from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
 
 
 def build_discriminator(img_shape, df):
@@ -11,7 +12,8 @@ def build_discriminator(img_shape, df):
         d = Conv2D(filters, kernel_size=f_size, strides=2, padding='same')(layer_input)
         d = LeakyReLU(alpha=0.2)(d)
         if normalization:
-            d = InstanceNormalization()(d)
+            # https://stackoverflow.com/questions/68088889/how-to-add-instancenormalization-on-tensorflow-keras
+            d = BatchNormalization(axis=[0,1])(d)
         return d
 
     img = Input(shape=img_shape)
