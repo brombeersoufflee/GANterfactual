@@ -88,18 +88,18 @@ class CycleGAN():
         custom_objects = {"InstanceNormalization": BatchNormalization(axis=[0,1])}
 
         # Load discriminators from disk
-        self.d_N = keras.models.load_model(os.path.join(cyclegan_folder, 'discriminator_n.h5'),
+        self.d_N = keras.models.load_model(os.path.join(cyclegan_folder, 'discriminator_n.keras'),
                                            custom_objects=custom_objects)
         self.d_N._name = "d_N"
-        self.d_P = keras.models.load_model(os.path.join(cyclegan_folder, 'discriminator_p.h5'),
+        self.d_P = keras.models.load_model(os.path.join(cyclegan_folder, 'discriminator_p.keras'),
                                            custom_objects=custom_objects)
         self.d_P._name = "d_P"
 
         # Load generators from disk
-        self.g_NP = keras.models.load_model(os.path.join(cyclegan_folder, 'generator_np.h5'),
+        self.g_NP = keras.models.load_model(os.path.join(cyclegan_folder, 'generator_np.keras'),
                                             custom_objects=custom_objects)
         self.g_NP._name = "g_NP"
-        self.g_PN = keras.models.load_model(os.path.join(cyclegan_folder, 'generator_pn.h5'),
+        self.g_PN = keras.models.load_model(os.path.join(cyclegan_folder, 'generator_pn.keras'),
                                             custom_objects=custom_objects)
         self.g_PN._name = "g_PN"
 
@@ -111,12 +111,12 @@ class CycleGAN():
         os.makedirs(cyclegan_folder, exist_ok=True)
 
         # Save discriminators to disk
-        self.d_N.save(os.path.join(cyclegan_folder, 'discriminator_n.h5'))
-        self.d_P.save(os.path.join(cyclegan_folder, 'discriminator_p.h5'))
+        self.d_N.save(os.path.join(cyclegan_folder, 'discriminator_n.keras'))
+        self.d_P.save(os.path.join(cyclegan_folder, 'discriminator_p.keras'))
 
         # Save generators to disk
-        self.g_NP.save(os.path.join(cyclegan_folder, 'generator_np.h5'))
-        self.g_PN.save(os.path.join(cyclegan_folder, 'generator_pn.h5'))
+        self.g_NP.save(os.path.join(cyclegan_folder, 'generator_np.keras'))
+        self.g_PN.save(os.path.join(cyclegan_folder, 'generator_pn.keras'))
 
     def build_combined(self, classifier_path=None, classifier_weight=None):
         # optimizer for both discriminators and generators, all use the same optimizer
@@ -347,7 +347,7 @@ class CycleGAN():
 
 if __name__ == '__main__':
     gan = CycleGAN()
-    gan.construct(classifier_path=os.path.join('..', 'models', 'classifier', 'model.h5'), classifier_weight=1)
+    gan.construct(classifier_path=os.path.join('..', 'models', 'classifier', 'model.keras'), classifier_weight=1)
     gan.train(dataset_name=os.path.join("..","data"), epochs=20, batch_size=1, print_interval=10,
           sample_interval=100)
     gan.save(os.path.join('..', 'models', 'GANterfactual'))
