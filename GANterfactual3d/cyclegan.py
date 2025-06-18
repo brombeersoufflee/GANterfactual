@@ -9,14 +9,13 @@ import numpy as np
 
 from skimage.transform import resize
 
-from keras.saving import load_model
-from keras.layers import Input, Dropout, Concatenate
+from keras.layers import Input, BatchNormalization
 from keras.models import Model
 from keras.optimizers import Adam
-from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
+# from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
 
 
-
+from classifier import load_classifier
 from dataloader import DataLoader
 from discriminator import build_discriminator
 from generator import build_generator
@@ -25,84 +24,116 @@ class CycleGAN():
 
     def __init__(self):
         # Input shape
+        # images modified in preprocessor.py to 512x512
         self.img_rows = 512
         self.img_cols = 512
+        # greyscale images
         self.channels = 1
+        #image shape defintion, for CNN
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
 
         # Calculate output shape of D (PatchGAN)
+        # TODO: what is PatchGAN?
+        # PatchGAN: uses patches, so the discriminator will classify each patch as real or fake
+        # Patch size is half of the image size, so 512/2^4 = 32 in this case
         patch = int(self.img_rows / 2 ** 4)
-        self.disc_patch = (patch, patch, 1)
+        self.disc_patch = (patch, patch, 1) # disc to be used on image in discriminator
 
         # Number of filters in the first layer of G and D
+        # the generator and discriminator are both CNNs, so they have filters
         self.gf = 32
         self.df = 64
 
         # Loss weights
-        self.lambda_cycle = 10.0  # Cycle-consistency loss
-        self.lambda_id = 0.1 * self.lambda_cycle  # Identity loss
+        self.lambda_cycle = 10.0  # Cycle-consistency loss lamda value (how much weight to give to the cycle-consistency loss)
+        # Cycle-consistency loss: ensures that the translation from one domain to another and back results in the original image
+        self.lambda_id = 0.1 * self.lambda_cycle  # Identity loss lambda value (how much weight to give to the identity loss)
+        # Identity loss: ensures that the generator does not change the image if it is already in the target domain
+        # TODO: Why  is the identityy value one thenth of the cycle-consistency loss?
 
-        self.d_N = None
-        self.d_P = None
-        self.g_NP = None
-        self.g_PN = None
-        self.combined = None
-        self.classifier = None
+        # Initialize the discriminators and generators
+        self.d_N = None # Discriminator for NEGATIVE domain --> CNN classifier
+        self.d_P = None # Discriminator for POSITIVE domain --> CNN classifier
+        self.g_NP = None # Generator to translate NEGATIVE to POSITIVE domain -> CNN U Net
+        # U-Net: a type of CNN that is used for image segmentation, but here used to translate images from one domain to another
+        self.g_PN = None # Generator to translate POSITIVE to NEGATIVE domain -> CNN U Net
+        self.combined = None # Combined model for training the generators -> GAN
+        self.classifier = None # Classifier to classify the images in the two domains
 
     def construct(self, classifier_path=None, classifier_weight=None):
         # Build the discriminators
+        # TODO: what is the difference between the two discriminators?
+        # IDEA: The difference is the input images, one is for the NEGATIVE domain and the other for the POSITIVE domain
+        # IDEA: There could be just one but the output is: Is this a real POSITIVE image or a fake POSITIVE image?
+        # IDEA: The other one is: Is this a real NEGATIVE image or a fake NEGATIVE image?
+        # The reasoning is that the discriminator is trained to classify images as real or fake, so it needs to know which domain the image is from
+        # furthermore, both generators neeed their own adversaries, to make them better at generating images
         self.d_N = build_discriminator(self.img_shape, self.df)
-        self.d_P = build_discriminator(self.img_shape, self.df)
+        self.d_P = build_discriminator(self.img_shape, self.df) 
 
         # Build the generators
         self.g_NP = build_generator(self.img_shape, self.gf, self.channels)
         self.g_PN = build_generator(self.img_shape, self.gf, self.channels)
 
+        # Combined model trains generators to fool discriminators
+        # contains the losses for the generators and discriminators
         self.build_combined(classifier_path, classifier_weight)
 
     def load_existing(self, cyclegan_folder, classifier_path=None, classifier_weight=None):
-        custom_objects = {"InstanceNormalization": InstanceNormalization}
+        # The discriminators and generators from disk
+        # the cycle itself is not loaded from disk, but built again
+        # custom objects for loading the models, InstanceNormalization is a custom layer used in the generators and discriminators
+        # It is used to normalize the activations of the previous layer at each batch, which helps to stabilize the training
+        # To achieve this we use the keras
+        custom_objects = {"InstanceNormalization": BatchNormalization(axis=[0,1])}
 
         # Load discriminators from disk
-        self.d_N = keras.models.load_model(os.path.join(cyclegan_folder, 'discriminator_n.h5'),
+        self.d_N = keras.models.load_model(os.path.join(cyclegan_folder, 'discriminator_n.keras'),
                                            custom_objects=custom_objects)
         self.d_N._name = "d_N"
-        self.d_P = keras.models.load_model(os.path.join(cyclegan_folder, 'discriminator_p.h5'),
+        self.d_P = keras.models.load_model(os.path.join(cyclegan_folder, 'discriminator_p.keras'),
                                            custom_objects=custom_objects)
         self.d_P._name = "d_P"
 
         # Load generators from disk
-        self.g_NP = keras.models.load_model(os.path.join(cyclegan_folder, 'generator_np.h5'),
+        self.g_NP = keras.models.load_model(os.path.join(cyclegan_folder, 'generator_np.keras'),
                                             custom_objects=custom_objects)
         self.g_NP._name = "g_NP"
-        self.g_PN = keras.models.load_model(os.path.join(cyclegan_folder, 'generator_pn.h5'),
+        self.g_PN = keras.models.load_model(os.path.join(cyclegan_folder, 'generator_pn.keras'),
                                             custom_objects=custom_objects)
         self.g_PN._name = "g_PN"
 
+        # builds combined model based on loaded discriminators and generators
         self.build_combined(classifier_path, classifier_weight)
 
     def save(self, cyclegan_folder):
+        # save the generators and discriminators to disk, the cycle gan itself is not saved but built again (see above)
         os.makedirs(cyclegan_folder, exist_ok=True)
 
         # Save discriminators to disk
-        self.d_N.save(os.path.join(cyclegan_folder, 'discriminator_n.h5'))
-        self.d_P.save(os.path.join(cyclegan_folder, 'discriminator_p.h5'))
+        self.d_N.save(os.path.join(cyclegan_folder, 'discriminator_n.keras'))
+        self.d_P.save(os.path.join(cyclegan_folder, 'discriminator_p.keras'))
 
         # Save generators to disk
-        self.g_NP.save(os.path.join(cyclegan_folder, 'generator_np.h5'))
-        self.g_PN.save(os.path.join(cyclegan_folder, 'generator_pn.h5'))
+        self.g_NP.save(os.path.join(cyclegan_folder, 'generator_np.keras'))
+        self.g_PN.save(os.path.join(cyclegan_folder, 'generator_pn.keras'))
 
     def build_combined(self, classifier_path=None, classifier_weight=None):
+        # optimizer for both discriminators and generators, all use the same optimizer
         optimizer = Adam(0.0002, 0.5)
 
+        # discriminators d_N / D_P means the discriminator for the NEGATIVE / POSITIVE domain
+        # mean square error for the classifier, the classifier just returns one probability per image
+        # TODO: Is 0 real or is 1 real?
+        # TODO: assess accuracy because? why not balanced accuracy?
         self.d_N.compile(loss='mse',
                          optimizer=optimizer,
                          metrics=['accuracy'])
         self.d_P.compile(loss='mse',
                          optimizer=optimizer,
                          metrics=['accuracy'])
-
         # Input images from both domains
+        # the input images are separated in negative and positive images
         img_N = Input(shape=self.img_shape)
         img_P = Input(shape=self.img_shape)
 
@@ -117,6 +148,9 @@ class CycleGAN():
         img_P_id = self.g_NP(img_P)
 
         # For the combined model we will only train the generators
+        # TODO: Why is this done?
+        # GPT: The discriminators are already trained, so we only need to train the generators to fool the discriminators
+        # TODO: Why are the generators not set to non-trainable? (GPT suggestts to also set the generators to non-trainable)
         self.d_N.trainable = False
         self.d_P.trainable = False
 
@@ -125,7 +159,7 @@ class CycleGAN():
         valid_P = self.d_P(fake_P)
 
         if classifier_path is not None and os.path.isfile(classifier_path):
-            self.classifier = load_model(classifier_path, compile=True)
+            self.classifier = load_classifier(classifier_path)
             self.classifier._name = "classifier"
             self.classifier.trainable = False
 
@@ -179,8 +213,8 @@ class CycleGAN():
         class_N = np.stack([np.ones(batch_size), np.zeros(batch_size)]).T
         class_P = np.stack([np.zeros(batch_size), np.ones(batch_size)]).T
 
-        for epoch in range(epochs):
-            for batch_i, (imgs_N, imgs_P) in enumerate(data_loader.load_batch(train_N, train_P, batch_size)):
+        for epoch in range(epochs): # epochs = 20
+            for batch_i, (imgs_N, imgs_P) in enumerate(data_loader.load_batch(train_N, train_P, batch_size)): #load_batch yields a batch amount of (normal, pneumo)
                 # ----------------------
                 #  Train Discriminators
                 # ----------------------
@@ -313,7 +347,7 @@ class CycleGAN():
 
 if __name__ == '__main__':
     gan = CycleGAN()
-    gan.construct(classifier_path="CNN_model.keras", classifier_weight=1)
+    gan.construct(classifier_path=os.path.join('..', 'models', 'classifier', 'model.keras'), classifier_weight=1)
     gan.train(dataset_name=os.path.join("..","data"), epochs=20, batch_size=1, print_interval=10,
           sample_interval=100)
     gan.save(os.path.join('..', 'models', 'GANterfactual'))

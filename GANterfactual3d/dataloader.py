@@ -1,9 +1,7 @@
 from __future__ import print_function, division
-
 import os
-
 import keras
-import numpy as np
+from keras.layers import Rescaling
 
 
 class DataLoader():
@@ -11,38 +9,37 @@ class DataLoader():
         self.dataset_name = dataset_name
         self.img_res = img_res
 
-        self.image_gen_config = {
-            "horizontal_flip": False,
-            "preprocessing_function": (lambda x: x / 127.5 - 1.),
-            "rescale": None,
-        }
-
-    def load_batch(self, train_N="NEGATIVE", train_P="POSITIVE", batch_size=16, is_testing=False):
-        generator = keras.preprocessing.image.ImageDataGenerator(**self.image_gen_config)
-
-        flow_args = dict(
-            class_mode="categorical",
-            batch_size=batch_size,
-            color_mode="grayscale",
-            shuffle=True,
-            target_size=self.img_res,
-        )
-
+    # needs to be modified to be "negative" and "positive" for the two classes, not capitalized
+    def load_batch(self, train_N="negative", train_P="positive", batch_size=16, is_testing=False):
+        
         subdir = "validation" if is_testing else "train"
 
-        negative_path = os.path.join(self.dataset_name, subdir, train_N)
-        positive_path = os.path.join(self.dataset_name, subdir, train_P)
+        # Normalize: (lambda x: x / 127.5 - 1) can be applied as part of a preprocessing layer
+        normalization_layer = Rescaling(1./127.5, offset=-1)
+        
+        # Load negative (class 0) images only
+        data_negative = keras.utils.image_dataset_from_directory(
+            f"../data/{subdir}/{train_N}",
+            labels=None,
+            color_mode='grayscale',
+            batch_size=batch_size,
+            image_size=self.img_res,
+            shuffle=True
+        ).map(lambda x: normalization_layer(x))
 
-        negative_flow = generator.flow_from_directory(negative_path, **flow_args)
-        positive_flow = generator.flow_from_directory(positive_path, **flow_args)
+        data_positive = keras.utils.image_dataset_from_directory(
+            f"../data/{subdir}/{train_P}",
+            labels=None,
+            color_mode='grayscale',
+            batch_size=batch_size,
+            image_size=self.img_res,
+            shuffle=True
+        ).map(lambda x: normalization_layer(x))
 
         # endless loop so we can use the maximum
-        n_batches = max(len(negative_flow), len(positive_flow))
+        n_batches = max(len(data_negative), len(data_positive))
 
-        for b_normal, b_pneumo, _ in zip(negative_flow, positive_flow, range(n_batches)):
-            normal, _ = b_normal
-            pneumo, _ = b_pneumo
-
+        for normal, pneumo, _ in zip(data_negative, data_positive, range(n_batches)):
             yield normal, pneumo
 
     def load_single(self, path):
