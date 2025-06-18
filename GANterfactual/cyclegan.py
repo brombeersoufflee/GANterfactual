@@ -9,7 +9,7 @@ import numpy as np
 
 from skimage.transform import resize
 
-from keras.layers import Input, Dropout, Concatenate, BatchNormalization
+from keras.layers import Input, BatchNormalization
 from keras.models import Model
 from keras.optimizers import Adam
 # from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
