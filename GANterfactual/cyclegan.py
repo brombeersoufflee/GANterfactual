@@ -52,28 +52,29 @@ class CycleGAN():
         # TODO: Why  is the identityy value one thenth of the cycle-consistency loss?
 
         # Initialize the discriminators and generators
-        self.d_N = None # Discriminator for NEGATIVE domain --> CNN classifier
-        self.d_P = None # Discriminator for POSITIVE domain --> CNN classifier
-        self.g_NP = None # Generator to translate NEGATIVE to POSITIVE domain -> CNN U Net
+        self.d_N = None # Discriminator for negative domain --> CNN classifier
+        self.d_P = None # Discriminator for positive domain --> CNN classifier
+        self.g_NP = None # Generator to translate negative to positive domain -> CNN U Net
         # U-Net: a type of CNN that is used for image segmentation, but here used to translate images from one domain to another
-        self.g_PN = None # Generator to translate POSITIVE to NEGATIVE domain -> CNN U Net
+        self.g_PN = None # Generator to translate positive to negative domain -> CNN U Net
         self.combined = None # Combined model for training the generators -> GAN
         self.classifier = None # Classifier to classify the images in the two domains
 
     def construct(self, classifier_path=None, classifier_weight=None):
         # Build the discriminators
         # TODO: what is the difference between the two discriminators?
-        # IDEA: The difference is the input images, one is for the NEGATIVE domain and the other for the POSITIVE domain
-        # IDEA: There could be just one but the output is: Is this a real POSITIVE image or a fake POSITIVE image?
-        # IDEA: The other one is: Is this a real NEGATIVE image or a fake NEGATIVE image?
+        # IDEA: The difference is the input images, one is for the negative domain and the other for the positive domain
+        # IDEA: There could be just one but the output is: Is this a real positive image or a fake positive image?
+        # IDEA: The other one is: Is this a real negative image or a fake negative image?
         # The reasoning is that the discriminator is trained to classify images as real or fake, so it needs to know which domain the image is from
         # furthermore, both generators neeed their own adversaries, to make them better at generating images
-        self.d_N = build_discriminator(self.img_shape, self.df)
-        self.d_P = build_discriminator(self.img_shape, self.df) 
+        # give name to avoid conflicts
+        self.d_N = build_discriminator(self.img_shape, self.df, name = 'discriminator_negative')
+        self.d_P = build_discriminator(self.img_shape, self.df, name = 'discriminator_positive') 
 
         # Build the generators
-        self.g_NP = build_generator(self.img_shape, self.gf, self.channels)
-        self.g_PN = build_generator(self.img_shape, self.gf, self.channels)
+        self.g_NP = build_generator(self.img_shape, self.gf, self.channels, name='generator_neg_to_pos')
+        self.g_PN = build_generator(self.img_shape, self.gf, self.channels, name='generator_pos_to_neg')
 
         # Combined model trains generators to fool discriminators
         # contains the losses for the generators and discriminators
@@ -122,7 +123,7 @@ class CycleGAN():
         # optimizer for both discriminators and generators, all use the same optimizer
         optimizer = Adam(0.0002, 0.5)
 
-        # discriminators d_N / D_P means the discriminator for the NEGATIVE / POSITIVE domain
+        # discriminators d_N / D_P means the discriminator for the negative / positive domain
         # mean square error for the classifier, the classifier just returns one probability per image
         # TODO: Is 0 real or is 1 real?
         # TODO: assess accuracy because? why not balanced accuracy?
@@ -198,7 +199,7 @@ class CycleGAN():
                                                 self.lambda_id, self.lambda_id],
                                   optimizer=optimizer)
 
-    def train(self, dataset_name, epochs, batch_size=1, train_N="NEGATIVE", train_P="POSITIVE", print_interval=100,
+    def train(self, dataset_name, epochs, batch_size=1, train_N="negative", train_P="positive", print_interval=100,
               sample_interval=1000):
 
         # Configure data loader
@@ -214,6 +215,7 @@ class CycleGAN():
         class_P = np.stack([np.zeros(batch_size), np.ones(batch_size)]).T
 
         for epoch in range(epochs): # epochs = 20
+            # gives 262 batches of 16 images each
             for batch_i, (imgs_N, imgs_P) in enumerate(data_loader.load_batch(train_N, train_P, batch_size)): #load_batch yields a batch amount of (normal, pneumo)
                 # ----------------------
                 #  Train Discriminators
@@ -290,10 +292,10 @@ class CycleGAN():
         reconstr_P = self.g_NP.predict(fake_N)
 
         imgs = [img_N, fake_P, reconstr_N, img_P, fake_N, reconstr_P]
-        classification = [['NEGATIVE', 'POSITIVE'][int(np.argmax(self.classifier.predict(x)))] for x in imgs]
+        classification = [['negative', 'positive'][int(np.argmax(self.classifier.predict(x)))] for x in imgs]
 
         gen_imgs = np.concatenate(imgs)
-        correct_classification = ['NEGATIVE', 'POSITIVE', 'NEGATIVE', 'POSITIVE', 'NEGATIVE', 'POSITIVE']
+        correct_classification = ['negative', 'positive', 'negative', 'positive', 'negative', 'positive']
 
         # Rescale images 0 - 1
         gen_imgs = 0.5 * gen_imgs + 0.5
@@ -320,11 +322,11 @@ class CycleGAN():
 
         pred_original = self.classifier.predict(original)
         if int(np.argmax(pred_original)) == 0:
-            print("PREDICTION -- NEGATIVE")
+            print("PREDICTION -- negative")
             translated = self.g_NP.predict(original)
             reconstructed = self.g_PN.predict(translated)
         else:
-            print("PREDICTION -- POSITIVE")
+            print("PREDICTION -- positive")
             translated = self.g_PN.predict(original)
             reconstructed = self.g_NP.predict(translated)
 
@@ -346,8 +348,9 @@ class CycleGAN():
 
 
 if __name__ == '__main__':
+    print(os.getcwd())
     gan = CycleGAN()
-    gan.construct(classifier_path=os.path.join('..', 'models', 'classifier', 'model.keras'), classifier_weight=1)
+    gan.construct(classifier_path=os.path.join('GANterfactual', 'classifier2.keras'), classifier_weight=1)
     gan.train(dataset_name=os.path.join("..","data"), epochs=20, batch_size=1, print_interval=10,
           sample_interval=100)
-    gan.save(os.path.join('..', 'models', 'GANterfactual'))
+    gan.save(os.path.join('..', 'models'))

@@ -29,6 +29,7 @@ def load_classifier(path):
     return classifier
 
 
+# not used anymore, but kept for reference
 def build_classifier(img_shape):
     input = Input(shape=img_shape)
 

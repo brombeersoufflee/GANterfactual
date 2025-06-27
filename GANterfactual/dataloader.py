@@ -19,7 +19,7 @@ class DataLoader():
         
         # Load negative (class 0) images only
         data_negative = keras.utils.image_dataset_from_directory(
-            f"../data/{subdir}/{train_N}",
+            f"data/{subdir}/{train_N}",
             labels=None,
             color_mode='grayscale',
             batch_size=batch_size,
@@ -28,7 +28,7 @@ class DataLoader():
         ).map(lambda x: normalization_layer(x))
 
         data_positive = keras.utils.image_dataset_from_directory(
-            f"../data/{subdir}/{train_P}",
+            f"data/{subdir}/{train_P}",
             labels=None,
             color_mode='grayscale',
             batch_size=batch_size,
@@ -44,8 +44,10 @@ class DataLoader():
 
     def load_single(self, path):
         img = keras.preprocessing.image.load_img(path, color_mode="grayscale", target_size=self.img_res)
-        x = keras.preprocessing.image.img_to_array(img) / 127.5 - 1
-        return x
+        # print("Performing preprocessing; ... incorecct!, now done in model layer")
+        # x = keras.preprocessing.image.img_to_array(img) / 127.5 - 1
+        x = keras.preprocessing.image.img_to_array(img)
+        return x.reshape((1, self.img_res[0], self.img_res[1], 1))
 
     def save_single(self, x, path):
         # Rescale images 0 - 1

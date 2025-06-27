@@ -32,7 +32,6 @@ def preprocess(in_path, out_path, test_size, val_size, dim):
     le.fit(df_img_lbl['class'])
     df_img_lbl['class'] = le.transform(df_img_lbl['class'])
     print("Classes found: ", le.classes_)
-    # df_img_lbl = df_img_lbl.set_index('patientId')
 
     # the class encoding by label encoder is the wrong way around
     # we fix this by assigning "positive" to the first class (ie. 0) and "negative" to the second class (ie. 1)
@@ -40,7 +39,6 @@ def preprocess(in_path, out_path, test_size, val_size, dim):
         df_label = df_img_lbl[df_img_lbl["class"] == idx]
         print(f"Number of images in {label} dataset: ", df_label.shape[0])
         image_names = df_label['patientId'].tolist()  # Get the list of image names
-        # df_label1 = df_label["class"].to_dict()  # Convert to dictionary for easier access
         print(f"Number of images in {label} dataset after filtering: ", len(image_names))
 
         train, test_val = train_test_split(image_names, test_size=test_size + val_size)

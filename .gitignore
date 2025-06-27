@@ -1,4 +1,12 @@
 __pycache__/
-data/
-non_glaucoma_oct_data/
 .venv/
+data/
+data3d/
+GANterfactual/classifier2.keras
+GANterfactual/logs/
+GANterfactual/__pycache__
+GANterfactual3d/train_minus_val_data_indeces.npy
+GANterfactual3d/val_data_indeces.npy
+images/
+logs/
+

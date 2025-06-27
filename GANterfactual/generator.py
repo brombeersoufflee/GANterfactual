@@ -6,13 +6,13 @@ from keras.models import Model
 from keras.layers import BatchNormalization
 
 
-def build_generator(img_shape, gf, channels):
+def build_generator(img_shape, gf, channels, name = 'generator'):
     """U-Net Generator"""
 
     def conv2d(layer_input, filters, f_size=4):
         """Layers used during downsampling"""
         d = Conv2D(filters, kernel_size=f_size, strides=2, padding='same')(layer_input)
-        d = LeakyReLU(alpha=0.2)(d)
+        d = LeakyReLU(negative_slope=0.2)(d)
         d = BatchNormalization()(d)
         return d
 
@@ -43,4 +43,4 @@ def build_generator(img_shape, gf, channels):
     u4 = UpSampling2D(size=2)(u3)
     output_img = Conv2D(channels, kernel_size=4, strides=1, padding='same', activation='tanh')(u4)
 
-    return Model(d0, output_img)
+    return Model(d0, output_img, name=name)
