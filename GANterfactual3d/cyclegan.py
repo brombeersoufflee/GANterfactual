@@ -15,7 +15,6 @@ from keras.optimizers import Adam
 # from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
 
 
-from classifier import load_classifier
 from dataloader import DataLoader
 from discriminator import build_discriminator
 from generator import build_generator
@@ -24,25 +23,28 @@ class CycleGAN():
 
     def __init__(self):
         # Input shape
-        # images modified in preprocessor.py to 512x512
-        self.img_rows = 512
-        self.img_cols = 512
+        self.input_shape = (64, 128, 64)
         # greyscale images
         self.channels = 1
         #image shape defintion, for CNN
-        self.img_shape = (self.img_rows, self.img_cols, self.channels)
-
+        self.img_shape = (self.input_shape[0], self.input_shape[1], self.input_shape[2], self.channels)
         # Calculate output shape of D (PatchGAN)
-        # TODO: what is PatchGAN?
         # PatchGAN: uses patches, so the discriminator will classify each patch as real or fake
-        # Patch size is half of the image size, so 512/2^4 = 32 in this case
-        patch = int(self.img_rows / 2 ** 4)
-        self.disc_patch = (patch, patch, 1) # disc to be used on image in discriminator
+        # Now we have a 64x128x64 image, so we need to make cubes
+        # Any power of 2 is possible, but which?
+        # previous implementation used 32x32x1 patches, that is 1024 pixels
+        # We use 16x16x16 patches, that is 4096 pixels
+        # TODO: Fine tune parameter
+        patch_sizes = np.array(self.input_shape)//16 # 16x16x16 patches, same as original implementation
+
+        self.disc_patch = (patch_sizes[0], patch_sizes[1], patch_sizes[2], 1)
 
         # Number of filters in the first layer of G and D
         # the generator and discriminator are both CNNs, so they have filters
-        self.gf = 32
-        self.df = 64
+        # original values are 32 and 64, but we use less
+        # TODO: FINE TUNE
+        self.gf = 16
+        self.df = 32
 
         # Loss weights
         self.lambda_cycle = 10.0  # Cycle-consistency loss lamda value (how much weight to give to the cycle-consistency loss)
@@ -126,6 +128,8 @@ class CycleGAN():
         # mean square error for the classifier, the classifier just returns one probability per image
         # TODO: Is 0 real or is 1 real?
         # TODO: assess accuracy because? why not balanced accuracy?
+        # TODO: Why do they use mse and not binary crossentropy?
+        # GPT: MSE is a good loss function for regression tasks. Binary crossentropy could also be used
         self.d_N.compile(loss='mse',
                          optimizer=optimizer,
                          metrics=['accuracy'])
@@ -159,7 +163,7 @@ class CycleGAN():
         valid_P = self.d_P(fake_P)
 
         if classifier_path is not None and os.path.isfile(classifier_path):
-            self.classifier = load_classifier(classifier_path)
+            self.classifier = keras.models.load_model(classifier_path)
             self.classifier._name = "classifier"
             self.classifier.trainable = False
 
@@ -198,11 +202,11 @@ class CycleGAN():
                                                 self.lambda_id, self.lambda_id],
                                   optimizer=optimizer)
 
-    def train(self, dataset_name, epochs, batch_size=1, train_N="negative", train_P="positive", print_interval=100,
+    def train(self, data_dir, epochs, batch_size=1, train_N="negative", train_P="positive", print_interval=100,
               sample_interval=1000):
 
         # Configure data loader
-        data_loader = DataLoader(dataset_name=dataset_name, img_res=(self.img_rows, self.img_cols))
+        data_loader = DataLoader(data_dir=data_dir, img_res=self.input_shape)
 
         start_time = datetime.datetime.now()
 
@@ -275,12 +279,19 @@ class CycleGAN():
             # Comment this in if you want to save checkpoints:
             #self.save(os.path.join('..','models','GANterfactual','ep_' + str(epoch)))
 
+    #TODO: not functional for 3d
     def sample_images(self, epoch, batch_i, testN, testP):
         os.makedirs('images', exist_ok=True)
         r, c = 2, 3
 
-        img_N = testN[np.newaxis, :, :, :]
-        img_P = testP[np.newaxis, :, :, :]
+        # TODO: these axes cant be right now that we have 3D images
+        # Add a new axis to the image to make it 4D, as the model expects a batch dimension
+        # np.newaxis adds a new axis to the array, so the shape becomes (1, 64, 128, 64, 1)
+        # added one ':' below
+        img_N = testN[np.newaxis, :, :, :, :]
+        # img_N = np.expand_dims(testN, axis=0)
+        img_P = testP[np.newaxis, :, :, :, :]
+        # img_P = np.expand_dims(testP, axis=0)
 
         # Translate images to the other domain
         fake_P = self.g_NP.predict(img_N)
@@ -311,12 +322,13 @@ class CycleGAN():
         fig.savefig("images/%d_%d.png" % (epoch, batch_i))
         plt.close()
 
+    # TODO: testing not completed
     def predict(self, original_in_path, translated_out_path, reconstructed_out_path, force_original_aspect_ratio=False):
         assert (self.classifier is not None)
-        data_loader = DataLoader(img_res=(self.img_rows, self.img_cols))
+        data_loader = DataLoader(img_res=self.input_shape)
 
         original = data_loader.load_single(original_in_path)
-        original = original.reshape(1, original.shape[0], original.shape[1], original.shape[2])
+        # original = original.reshape(1, original.shape[0], original.shape[1], original.shape[2])
 
         pred_original = self.classifier.predict(original)
         if int(np.argmax(pred_original)) == 0:
@@ -346,8 +358,9 @@ class CycleGAN():
 
 
 if __name__ == '__main__':
+    print(os.getcwd())
     gan = CycleGAN()
-    gan.construct(classifier_path=os.path.join('..', 'models', 'classifier', 'model.keras'), classifier_weight=1)
-    gan.train(dataset_name=os.path.join("..","data"), epochs=20, batch_size=1, print_interval=10,
-          sample_interval=100)
-    gan.save(os.path.join('..', 'models', 'GANterfactual'))
+    gan.construct(classifier_path=os.path.join('GANterfactual3d', 'classifier.keras'), classifier_weight=1)
+    # gan.train(data_dir=os.path.join("data"), epochs=20, batch_size=1, print_interval=10,
+    #       sample_interval=100)
+    # gan.save(os.path.join('GANterfactual3d'))

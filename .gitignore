@@ -5,6 +5,7 @@ data3d/
 GANterfactual/classifier2.keras
 GANterfactual/logs/
 GANterfactual/__pycache__
+GANterfactual3d/classifier.keras
 GANterfactual3d/train_minus_val_data_indeces.npy
 GANterfactual3d/val_data_indeces.npy
 images/

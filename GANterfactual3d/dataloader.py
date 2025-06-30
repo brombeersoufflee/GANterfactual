@@ -76,3 +76,8 @@ class DataLoader():
         # vol = tf.image.resize(vol, [self.img_res[0]], method="nearest")  # Resize D
         vol = tf.convert_to_tensor(vol, dtype=tf.int8)
         return tf.reshape(vol, (1, *self.img_res, 1))
+    
+    def save_single(self, x, path):
+        # Rescale images 0 - 1
+        x = 0.5 * x + 0.5
+        np.save(path, x)
