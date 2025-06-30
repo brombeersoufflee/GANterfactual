@@ -5,7 +5,7 @@ from keras.layers import BatchNormalization
 from keras.models import Model
 
 
-def build_discriminator(img_shape, df):
+def build_discriminator(img_shape, df, name = "discriminator"):
     def d_layer(layer_input, filters, f_size=4, normalization=True):
         """Discriminator layer"""
         d = Conv3D(filters, kernel_size=f_size, strides=2, padding='same')(layer_input)
@@ -27,4 +27,4 @@ def build_discriminator(img_shape, df):
     # The output shape needs to match the "valid" parameter shape in the cyclegan
     validity = Conv3D(1, kernel_size=4, strides=1, padding='same')(d4)
 
-    return Model(img, validity)
+    return Model(img, validity, name=name)

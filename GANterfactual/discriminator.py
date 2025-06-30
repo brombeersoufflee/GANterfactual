@@ -5,7 +5,7 @@ from keras.layers import BatchNormalization
 from keras.models import Model
 
 
-def build_discriminator(img_shape, df, name):
+def build_discriminator(img_shape, df, name = "discriminator"):
     def d_layer(layer_input, filters, f_size=4, normalization=True):
         """Discriminator layer"""
         d = Conv2D(filters, kernel_size=f_size, strides=2, padding='same')(layer_input)

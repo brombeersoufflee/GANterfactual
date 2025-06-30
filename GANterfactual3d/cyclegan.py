@@ -70,12 +70,14 @@ class CycleGAN():
         # IDEA: The other one is: Is this a real negative image or a fake negative image?
         # The reasoning is that the discriminator is trained to classify images as real or fake, so it needs to know which domain the image is from
         # furthermore, both generators neeed their own adversaries, to make them better at generating images
-        self.d_N = build_discriminator(self.img_shape, self.df)
-        self.d_P = build_discriminator(self.img_shape, self.df) 
+    
+        # give name to avoid conflicts
+        self.d_N = build_discriminator(self.img_shape, self.df, name = 'discriminator_negative')
+        self.d_P = build_discriminator(self.img_shape, self.df, name = 'discriminator_positive') 
 
         # Build the generators
-        self.g_NP = build_generator(self.img_shape, self.gf, self.channels)
-        self.g_PN = build_generator(self.img_shape, self.gf, self.channels)
+        self.g_NP = build_generator(self.img_shape, self.gf, self.channels, name='generator_neg_to_pos')
+        self.g_PN = build_generator(self.img_shape, self.gf, self.channels, name='generator_pos_to_neg')
 
         # Combined model trains generators to fool discriminators
         # contains the losses for the generators and discriminators
@@ -163,7 +165,8 @@ class CycleGAN():
         valid_P = self.d_P(fake_P)
 
         if classifier_path is not None and os.path.isfile(classifier_path):
-            self.classifier = keras.models.load_model(classifier_path)
+            # The following compile = False is essential to circumvent an error, it is also just used for inference so it is not needed compiled
+            self.classifier = keras.models.load_model(classifier_path, compile=False)
             self.classifier._name = "classifier"
             self.classifier.trainable = False
 
@@ -361,6 +364,6 @@ if __name__ == '__main__':
     print(os.getcwd())
     gan = CycleGAN()
     gan.construct(classifier_path=os.path.join('GANterfactual3d', 'classifier.keras'), classifier_weight=1)
-    # gan.train(data_dir=os.path.join("data"), epochs=20, batch_size=1, print_interval=10,
-    #       sample_interval=100)
-    # gan.save(os.path.join('GANterfactual3d'))
+    gan.train(data_dir=os.path.join("data3d"), epochs=20, batch_size=1, print_interval=10,
+          sample_interval=100)
+    gan.save(os.path.join('GANterfactual3d'))

@@ -6,7 +6,7 @@ from keras.models import Model
 from keras.layers import BatchNormalization
 
 
-def build_generator(img_shape, gf, channels):
+def build_generator(img_shape, gf, channels, name = "generator"):
     """U-Net Generator"""
 
     def conv3d(layer_input, filters, f_size=4):
@@ -43,4 +43,4 @@ def build_generator(img_shape, gf, channels):
     u4 = UpSampling3D(size=2)(u3)
     output_img = Conv3D(channels, kernel_size=4, strides=1, padding='same', activation='tanh')(u4)
 
-    return Model(d0, output_img)
+    return Model(d0, output_img, name=name)
