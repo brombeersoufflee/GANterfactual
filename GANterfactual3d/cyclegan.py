@@ -92,18 +92,18 @@ class CycleGAN():
         custom_objects = {"InstanceNormalization": BatchNormalization(axis=[0,1])}
 
         # Load discriminators from disk
-        self.d_N = keras.models.load_model(os.path.join(cyclegan_folder, 'discriminator_n.keras'),
+        self.d_N = keras.saving.load_model(os.path.join(cyclegan_folder, 'discriminator_n.keras'),
                                            custom_objects=custom_objects)
         self.d_N._name = "d_N"
-        self.d_P = keras.models.load_model(os.path.join(cyclegan_folder, 'discriminator_p.keras'),
+        self.d_P = keras.saving.load_model(os.path.join(cyclegan_folder, 'discriminator_p.keras'),
                                            custom_objects=custom_objects)
         self.d_P._name = "d_P"
 
         # Load generators from disk
-        self.g_NP = keras.models.load_model(os.path.join(cyclegan_folder, 'generator_np.keras'),
+        self.g_NP = keras.saving.load_model(os.path.join(cyclegan_folder, 'generator_np.keras'),
                                             custom_objects=custom_objects)
         self.g_NP._name = "g_NP"
-        self.g_PN = keras.models.load_model(os.path.join(cyclegan_folder, 'generator_pn.keras'),
+        self.g_PN = keras.saving.load_model(os.path.join(cyclegan_folder, 'generator_pn.keras'),
                                             custom_objects=custom_objects)
         self.g_PN._name = "g_PN"
 
@@ -166,7 +166,7 @@ class CycleGAN():
 
         if classifier_path is not None and os.path.isfile(classifier_path):
             # The following compile = False is essential to circumvent an error, it is also just used for inference so it is not needed compiled
-            self.classifier = keras.models.load_model(classifier_path, compile=False)
+            self.classifier = keras.saving.load_model(classifier_path, compile=False)
             self.classifier._name = "classifier"
             self.classifier.trainable = False
 
