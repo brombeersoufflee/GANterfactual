@@ -12,7 +12,8 @@ class DataLoader():
 
     def load_npy_volume(self, file_path):
         volume = np.load(file_path)
-        volume = tf.convert_to_tensor(volume, dtype=tf.int8)
+        # must not be int8 (not enough for images in 0, 255 range)
+        volume = tf.convert_to_tensor(volume, dtype=tf.float32)
 
         # Reshape if needed (make sure it has shape D x H x W x 1)
         if len(volume.shape) == 3:

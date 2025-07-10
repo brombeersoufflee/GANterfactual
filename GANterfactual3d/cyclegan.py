@@ -282,19 +282,12 @@ class CycleGAN():
             # Comment this in if you want to save checkpoints:
             #self.save(os.path.join('..','models','GANterfactual','ep_' + str(epoch)))
 
-    #TODO: not functional for 3d
     def sample_images(self, epoch, batch_i, testN, testP):
         os.makedirs('images', exist_ok=True)
-        r, c = 2, 3
-
-        # TODO: these axes cant be right now that we have 3D images
-        # Add a new axis to the image to make it 4D, as the model expects a batch dimension
+        # Add a new axis to the image to make it 5D, as the model expects a batch dimension
         # np.newaxis adds a new axis to the array, so the shape becomes (1, 64, 128, 64, 1)
-        # added one ':' below
         img_N = testN[np.newaxis, :, :, :, :]
-        # img_N = np.expand_dims(testN, axis=0)
         img_P = testP[np.newaxis, :, :, :, :]
-        # img_P = np.expand_dims(testP, axis=0)
 
         # Translate images to the other domain
         fake_P = self.g_NP.predict(img_N)
@@ -312,20 +305,24 @@ class CycleGAN():
         # Rescale images 0 - 1
         gen_imgs = 0.5 * gen_imgs + 0.5
 
+        # this is for the created image sample
+        r, c = 2, 3
         titles = ['Original', 'Translated', 'Reconstructed']
-        fig, axs = plt.subplots(r, c, figsize=(15, 10))
+        fig, axs = plt.subplots(r, c, figsize=(8, 12))
         cnt = 0
         for i in range(r):
             for j in range(c):
-                axs[i, j].imshow(gen_imgs[cnt][:, :, 0], cmap='gray')
+                # get middle slice for visualisation
+                mid_slice = gen_imgs[cnt].shape[2] // 2
+                axs[i, j].imshow(np.rot90(gen_imgs[cnt][:, :, mid_slice, 0], k=-1), cmap='gray')
                 axs[i, j].set_title(f'{titles[j]} ({correct_classification[cnt]} | {classification[cnt]})')
                 axs[i, j].set_title(f'{titles[j]} ({correct_classification[cnt]})')
                 axs[i, j].axis('off')
                 cnt += 1
         fig.savefig("images/%d_%d.png" % (epoch, batch_i))
         plt.close()
-
-    # TODO: testing not completed
+    
+    # not used?
     def predict(self, original_in_path, translated_out_path, reconstructed_out_path, force_original_aspect_ratio=False):
         assert (self.classifier is not None)
         data_loader = DataLoader(img_res=self.input_shape)
