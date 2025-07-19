@@ -164,40 +164,28 @@ class CycleGAN():
             self.classifier._name = "classifier"
             self.classifier.trainable = False
 
-            class_N_loss = self.classifier(fake_N)
-            class_P_loss = self.classifier(fake_P)
+            class_N = self.classifier(fake_N)
+            class_P = self.classifier(fake_P)
 
             # Combined model trains generators to fool discriminators
             self.combined = Model(inputs=[img_N, img_P],
-                                  outputs=[valid_N, valid_P,
-                                           class_N_loss, class_P_loss,
-                                           reconstr_N, reconstr_P,
-                                           img_N_id, img_P_id])
+                                  outputs=[valid_N, valid_P, # adversarial loss
+                                           class_N, class_P, # classifier
+                                           reconstr_N, reconstr_P, # cycle consistency loss
+                                           img_N_id, img_P_id]) # identity
 
-            self.combined.compile(loss=['mse', 'mse',
-                                        'mse', 'mse',
-                                        'mae', 'mae',
-                                        'mae', 'mae'],
+            self.combined.compile(loss=['mse', 'mse', # adversarial loss
+                                        'mse', 'mse', # classifier loss
+                                        'mae', 'mae', # cycle consistency loss
+                                        'mae', 'mae'],# identity loss
                                   loss_weights=[1, 1,
-                                                classifier_weight, classifier_weight,
-                                                self.lambda_cycle, self.lambda_cycle,
-                                                self.lambda_id, self.lambda_id],
+                                                classifier_weight, classifier_weight, # 1
+                                                self.lambda_cycle, self.lambda_cycle, # 10
+                                                self.lambda_id, self.lambda_id], # 1
                                   optimizer=optimizer)
 
         else:
-            # Combined model trains generators to fool discriminators
-            self.combined = Model(inputs=[img_N, img_P],
-                                  outputs=[valid_N, valid_P,
-                                           reconstr_N, reconstr_P,
-                                           img_N_id, img_P_id])
-
-            self.combined.compile(loss=['mse', 'mse',
-                                        'mae', 'mae',
-                                        'mae', 'mae'],
-                                  loss_weights=[1, 1,
-                                                self.lambda_cycle, self.lambda_cycle,
-                                                self.lambda_id, self.lambda_id],
-                                  optimizer=optimizer)
+            raise ValueError("No classifier found. Please provide a classifier path.")
 
     def train(self, dataset_name, epochs, batch_size=1, train_N="negative", train_P="positive", print_interval=100,
               sample_interval=1000):
