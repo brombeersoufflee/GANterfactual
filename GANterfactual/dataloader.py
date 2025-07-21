@@ -45,7 +45,7 @@ class DataLoader():
     def load_single(self, path):
         img = keras.preprocessing.image.load_img(path, color_mode="grayscale", target_size=self.img_res)
         # print("Performing preprocessing; ... incorecct!, now done in model layer")
-        # x = keras.preprocessing.image.img_to_array(img) / 127.5 - 1
+        x = keras.preprocessing.image.img_to_array(img) / 127.5 - 1
         x = keras.preprocessing.image.img_to_array(img)
         return x.reshape((1, self.img_res[0], self.img_res[1], 1))
 
